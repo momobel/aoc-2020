@@ -7,24 +7,13 @@ fn get_input_path() -> String {
 
 struct PasswordPolicy {
     pub letter: char,
-    pub min: u16,
-    pub max: u16,
+    pub indic1: u16,
+    pub indic2: u16,
 }
 
 struct PasswordDetails {
     pub policy: PasswordPolicy,
     pub password: String,
-}
-
-impl PasswordDetails {
-    fn valid(&self) -> bool {
-        let count = self
-            .password
-            .chars()
-            .filter(|c| *c == self.policy.letter)
-            .count() as u16;
-        count >= self.policy.min && count <= self.policy.max
-    }
 }
 
 impl FromStr for PasswordPolicy {
@@ -36,13 +25,13 @@ impl FromStr for PasswordPolicy {
         let require = parts.get(1).ok_or("Missing required letter")?;
         // parse range specifier
         let range_tokens: Vec<&str> = range.split('-').collect();
-        let min = range_tokens
+        let indic1 = range_tokens
             .get(0)
-            .ok_or("Missing min specifier")?
+            .ok_or("Missing indic1 specifier")?
             .parse::<u16>()?;
-        let max = range_tokens
+        let indic2 = range_tokens
             .get(1)
-            .ok_or("Missing min specifier")?
+            .ok_or("Missing indic1 specifier")?
             .parse::<u16>()?;
         // parse letter requirement
         let letter = require
@@ -50,7 +39,11 @@ impl FromStr for PasswordPolicy {
             .next()
             .ok_or("Expected a letter in the policy")?;
         // all good!
-        Ok(PasswordPolicy { letter, min, max })
+        Ok(PasswordPolicy {
+            letter,
+            indic1,
+            indic2,
+        })
     }
 }
 
@@ -69,7 +62,7 @@ impl FromStr for PasswordDetails {
 
 type Input = Vec<PasswordDetails>;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -78,12 +71,78 @@ fn parse_input(input: &str) -> Input {
         .collect()
 }
 
+fn pwd_valid_part_1(pwd: &PasswordDetails) -> bool {
+    let count = pwd
+        .password
+        .chars()
+        .filter(|c| *c == pwd.policy.letter)
+        .count() as u16;
+    count >= pwd.policy.indic1 && count <= pwd.policy.indic2
+}
+
 fn solve_part_1(input: &Input) -> Output1 {
-    input.iter().filter(|p| p.valid()).count()
+    input.iter().filter(|p| pwd_valid_part_1(p)).count()
+}
+
+fn pwd_valid_part_2(pwd: &PasswordDetails) -> bool {
+    fn has_letter_at_pos(s: &str, pos: usize, expect: char) -> bool {
+        s.get(pos..=pos)
+            .map(|s| s.chars().next())
+            .flatten()
+            .map(|c| c == expect)
+            .unwrap_or(false)
+    }
+    let pass = &pwd.password;
+    has_letter_at_pos(pass, pwd.policy.indic1 as usize - 1, pwd.policy.letter)
+        ^ has_letter_at_pos(pass, pwd.policy.indic2 as usize - 1, pwd.policy.letter)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_pwd_valid_part_2_ex_1() {
+        let policy = PasswordPolicy {
+            letter: 'a',
+            indic1: 1,
+            indic2: 3,
+        };
+        let p = PasswordDetails {
+            password: String::from("abcde"),
+            policy,
+        };
+        assert!(pwd_valid_part_2(&p));
+    }
+    #[test]
+    fn test_pwd_valid_part_2_ex_2() {
+        let policy = PasswordPolicy {
+            letter: 'b',
+            indic1: 1,
+            indic2: 3,
+        };
+        let p = PasswordDetails {
+            password: String::from("cdefg"),
+            policy,
+        };
+        assert!(!pwd_valid_part_2(&p));
+    }
+    #[test]
+    fn test_pwd_valid_part_2_ex_3() {
+        let policy = PasswordPolicy {
+            letter: 'c',
+            indic1: 2,
+            indic2: 9,
+        };
+        let p = PasswordDetails {
+            password: String::from("ccccccccc"),
+            policy,
+        };
+        assert!(!pwd_valid_part_2(&p));
+    }
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    input.iter().filter(|p| pwd_valid_part_2(p)).count()
 }
 
 fn main() {
