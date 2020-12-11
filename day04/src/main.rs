@@ -5,21 +5,21 @@ fn get_input_path() -> String {
     args.get(1).unwrap().clone()
 }
 
-type Passport = HashMap<String, String>;
-type Input = Vec<Passport>;
+type RawPassport = HashMap<String, String>;
+type Input = Vec<RawPassport>;
 type Output1 = usize;
 type Output2 = ();
 
 fn parse_input(input: &str) -> Input {
-    let mut passports: Vec<Passport> = Vec::new();
-    let mut p: Passport = Passport::new();
+    let mut passports: Vec<RawPassport> = Vec::new();
+    let mut p: RawPassport = RawPassport::new();
     for l in input.lines() {
         if l.is_empty() {
             if p.is_empty() {
                 panic!("Passport must not be empty");
             }
             passports.push(p);
-            p = Passport::new();
+            p = RawPassport::new();
         } else {
             l.split(' ').for_each(|kv| {
                 let parts: Vec<&str> = kv.split(':').collect();
