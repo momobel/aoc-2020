@@ -26,7 +26,7 @@ impl Grid {
 
 type Input = Grid;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     let mut pattern: Vec<Cell> = Vec::new();
@@ -54,7 +54,7 @@ fn parse_input(input: &str) -> Input {
     }
 }
 
-fn solve_part_1(input: &Input) -> Output1 {
+fn encountered_trees(input: &Input, slope: (usize, usize)) -> usize {
     let mut trees: Output1 = 0;
     let mut x: usize = 0;
     let mut y: usize = 0;
@@ -62,14 +62,21 @@ fn solve_part_1(input: &Input) -> Output1 {
         if let Cell::Tree = cell {
             trees += 1;
         }
-        x += 3;
-        y += 1;
+        x += slope.0;
+        y += slope.1;
     }
     trees
 }
 
+fn solve_part_1(input: &Input) -> Output1 {
+    encountered_trees(input, (3, 1))
+}
+
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let slopes: &[(usize, usize)] = &[(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
+    slopes
+        .iter()
+        .fold(1, |acc, slope| acc * encountered_trees(input, *slope))
 }
 
 fn main() {
