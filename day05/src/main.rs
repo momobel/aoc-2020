@@ -86,12 +86,27 @@ fn solve_part_1(input: &Input) -> Output1 {
     input.iter().map(|s| seat_id(s)).max().unwrap()
 }
 
-fn solve_part_2(input: &Input) -> Output2 {
+fn solve_part_2_old(input: &Input) -> Output2 {
     let mut seat_ids: Vec<u16> = input.iter().map(|s| seat_id(s)).collect();
     seat_ids.sort();
     let head = seat_ids.iter();
     let tail = seat_ids.iter().skip(1);
     head.zip(tail).find(|(&h, &t)| t > h + 1).unwrap().0 + 1
+}
+
+fn solve_part_2(input: &Input) -> Output2 {
+    // 1 to N sum is N(N+1)/2
+    // sum of all seat IDs up to the max is a sum of:
+    // - all unused front seats
+    // - all used seats
+    // - our seat
+    // simply substract front unused and used from the max sum
+    let min = input.iter().map(|s| seat_id(s)).min().unwrap() as u64;
+    let max = input.iter().map(|s| seat_id(s)).max().unwrap() as u64;
+    let used_seats_id_sum: u64 = input.iter().map(|s| seat_id(s) as u64).sum();
+    let max_id_sum = max * (max + 1) / 2;
+    let min_id_sum = (min - 1) * min / 2;
+    (max_id_sum - used_seats_id_sum - min_id_sum) as u16
 }
 
 fn main() {
