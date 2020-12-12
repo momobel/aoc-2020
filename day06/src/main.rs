@@ -9,7 +9,7 @@ type YesAnswers = HashSet<char>;
 type GroupAnswers = Vec<YesAnswers>;
 type Input = Vec<GroupAnswers>;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -43,12 +43,24 @@ fn solve_part_1(input: &Input) -> Output1 {
         .sum()
 }
 
+fn solve_part_2(input: &Input) -> Output2 {
+    unimplemented!()
+}
+
+fn main() {
+    let input_path = get_input_path();
+    let raw_input = fs::read_to_string(input_path).unwrap();
+    let input = parse_input(&raw_input);
+    let part_1_result = solve_part_1(&input);
+    println!("Part 1: {:?}", part_1_result);
+    let part_2_result = solve_part_2(&input);
+    println!("Part 2: {:?}", part_2_result);
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    #[test]
-    fn test_part1_example() {
-        let input = "abc
+    const EXAMPLE_INPUT: &str = "abc
 
 a
 b
@@ -63,22 +75,16 @@ a
 a
 
 b";
-        let input = parse_input(input);
+    #[test]
+    fn test_part1_example() {
+        let input = parse_input(EXAMPLE_INPUT);
         let res = solve_part_1(&input);
         assert_eq!(11, res);
     }
-}
-
-fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
-}
-
-fn main() {
-    let input_path = get_input_path();
-    let raw_input = fs::read_to_string(input_path).unwrap();
-    let input = parse_input(&raw_input);
-    let part_1_result = solve_part_1(&input);
-    println!("Part 1: {:?}", part_1_result);
-    let part_2_result = solve_part_2(&input);
-    println!("Part 2: {:?}", part_2_result);
+    #[test]
+    fn test_part2_example() {
+        let input = parse_input(EXAMPLE_INPUT);
+        let res = solve_part_2(&input);
+        assert_eq!(6, res);
+    }
 }
