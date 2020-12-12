@@ -44,7 +44,18 @@ fn solve_part_1(input: &Input) -> Output1 {
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    input
+        .iter()
+        .map(|group| {
+            group
+                .iter()
+                .fold(group.iter().next().unwrap().clone(), |mut set, answers| {
+                    set.retain(|a| answers.contains(a));
+                    set
+                })
+                .len()
+        })
+        .sum()
 }
 
 fn main() {
