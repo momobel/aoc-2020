@@ -22,7 +22,7 @@ struct Rule {
 
 type Input = Vec<Rule>;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -96,7 +96,33 @@ fn solve_part_1(input: &Input) -> Output1 {
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let bag_constraints: HashMap<&str, &[Constraint]> = input
+        .iter()
+        .map(|rule| (rule.container.as_str(), rule.constraints.as_slice()))
+        .collect();
+    let mut contained: usize = 0;
+    let mut bags_visitor: HashMap<&str, usize> = HashMap::new();
+    bags_visitor.insert(SHINY, 1);
+    // go through each bags to look into until there is no content
+    while !bags_visitor.is_empty() {
+        let mut next: HashMap<&str, usize> = HashMap::new();
+        // get each visited constraints
+        for (visiting, qty) in bags_visitor.iter() {
+            if let Some(constraints) = bag_constraints.get(visiting) {
+                // count additional bags
+                // also mark the new content as to be visited next
+                for c in constraints.iter() {
+                    let inside = qty * c.quantity as usize;
+                    contained += inside;
+                    next.entry(&c.bag)
+                        .and_modify(|count| *count += inside)
+                        .or_insert(inside);
+                }
+            }
+        }
+        bags_visitor = next;
+    }
+    contained
 }
 
 fn main() {
@@ -133,5 +159,12 @@ dotted black bags contain no other bags.";
         let input = parse_input(EXAMPLE_INPUT);
         let res = solve_part_1(&input);
         assert_eq!(4, res);
+    }
+
+    #[test]
+    fn test_part2_example() {
+        let input = parse_input(EXAMPLE_INPUT);
+        let res = solve_part_2(&input);
+        assert_eq!(32, res);
     }
 }
