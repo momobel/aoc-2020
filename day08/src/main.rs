@@ -5,10 +5,15 @@ fn get_input_path() -> String {
     args.get(1).unwrap().clone()
 }
 
-enum Instruction {
+enum Operation {
     Noop,
-    Acc(i32),
-    Jump(i32),
+    Acc,
+    Jump,
+}
+
+struct Instruction {
+    pub op: Operation,
+    pub arg: i32,
 }
 
 type Program = Vec<Instruction>;
@@ -23,12 +28,13 @@ fn parse_input(input: &str) -> Input {
             let tokens: Vec<&str> = l.split(' ').collect();
             let inst = tokens.get(0).unwrap();
             let arg = tokens.get(1).unwrap().parse::<i32>().unwrap();
-            match *inst {
-                "nop" => Instruction::Noop,
-                "acc" => Instruction::Acc(arg),
-                "jmp" => Instruction::Jump(arg),
-                _ => panic!("Unknown instruction"),
-            }
+            let op = match *inst {
+                "nop" => Operation::Noop,
+                "acc" => Operation::Acc,
+                "jmp" => Operation::Jump,
+                _ => panic!("Unknown operation"),
+            };
+            Instruction { op, arg }
         })
         .collect()
 }
@@ -37,6 +43,11 @@ struct Machine<'a> {
     prog: &'a Program,
     pub acc: i32,
     pub iptr: usize,
+}
+
+enum MachineState {
+    Running,
+    Terminated,
 }
 
 impl<'a> Machine<'a> {
@@ -48,16 +59,20 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn step(&mut self) {
-        let inst = self.prog.get(self.iptr).unwrap();
-        match inst {
-            Instruction::Noop => self.iptr += 1,
-            Instruction::Jump(off) => self.iptr = (self.iptr as i32 + *off) as usize,
-            Instruction::Acc(arg) => {
-                self.acc += arg;
+    pub fn step(&mut self) -> MachineState {
+        let inst = match self.prog.get(self.iptr) {
+            Some(i) => i,
+            None => return MachineState::Terminated,
+        };
+        match inst.op {
+            Operation::Noop => self.iptr += 1,
+            Operation::Jump => self.iptr = (self.iptr as i32 + inst.arg) as usize,
+            Operation::Acc => {
+                self.acc += inst.arg;
                 self.iptr += 1;
             }
         }
+        MachineState::Running
     }
 }
 
