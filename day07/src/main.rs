@@ -1,4 +1,7 @@
-use std::{env, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+};
 
 fn get_input_path() -> String {
     let args: Vec<String> = env::args().collect();
@@ -18,7 +21,7 @@ struct Rule {
 }
 
 type Input = Vec<Rule>;
-type Output1 = ();
+type Output1 = usize;
 type Output2 = ();
 
 fn parse_input(input: &str) -> Input {
@@ -52,7 +55,39 @@ fn parse_input(input: &str) -> Input {
 }
 
 fn solve_part_1(input: &Input) -> Output1 {
-    unimplemented!()
+    let bag_holders = input.iter().fold(
+        HashMap::<String, HashSet<String>>::new(),
+        |mut map, rule| {
+            rule.constraints.iter().map(|c| &c.bag).for_each(|bag| {
+                map.entry(bag.clone())
+                    .and_modify(|bigger| {
+                        bigger.insert(rule.container.clone());
+                    })
+                    .or_insert_with(|| [rule.container.clone()].iter().cloned().collect());
+            });
+            map
+        },
+    );
+    let mut bigger: HashSet<String> = HashSet::new();
+    let mut bags: HashSet<String> = HashSet::new();
+    bags.insert(String::from("shiny gold"));
+    while !bags.is_empty() {
+        let mut next: HashSet<String> = HashSet::new();
+        for b in bags.iter() {
+            if let Some(holders) = bag_holders.get(b) {
+                holders.iter().for_each(|h| {
+                    if !bigger.contains(h) {
+                        next.insert(h.clone());
+                    }
+                });
+            }
+        }
+        next.iter().for_each(|b| {
+            bigger.insert(b.clone());
+        });
+        bags = next;
+    }
+    bigger.len()
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
@@ -81,9 +116,17 @@ dark olive bags contain 3 faded blue bags, 4 dotted black bags.
 vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
 faded blue bags contain no other bags.
 dotted black bags contain no other bags.";
+
     #[test]
     fn test_parse() {
         let input = parse_input(EXAMPLE_INPUT);
         dbg!(input);
+    }
+
+    #[test]
+    fn test_part1_example() {
+        let input = parse_input(EXAMPLE_INPUT);
+        let res = solve_part_1(&input);
+        assert_eq!(4, res);
     }
 }
