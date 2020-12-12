@@ -54,7 +54,10 @@ fn parse_input(input: &str) -> Input {
         .collect()
 }
 
+const SHINY: &str = "shiny gold";
+
 fn solve_part_1(input: &Input) -> Output1 {
+    // build map of bags to list of bags that can contain it
     let bag_holders = input
         .iter()
         .fold(HashMap::<&str, HashSet<&str>>::new(), |mut map, rule| {
@@ -68,23 +71,26 @@ fn solve_part_1(input: &Input) -> Output1 {
             map
         });
     let mut bigger: HashSet<&str> = HashSet::new();
-    let mut bags: HashSet<&str> = HashSet::new();
-    bags.insert("shiny gold");
-    while !bags.is_empty() {
+    let mut bags_visitor: HashSet<&str> = HashSet::new();
+    bags_visitor.insert(SHINY);
+    // go through each visited bags until there isn't any bigger
+    while !bags_visitor.is_empty() {
         let mut next: HashSet<&str> = HashSet::new();
-        for b in bags.iter() {
+        // go through their possible container (bigger bags)
+        for b in bags_visitor.iter() {
             if let Some(holders) = bag_holders.get(b) {
+                // mark them as to visit next
+                // add them to the bigger bags list
                 holders.iter().for_each(|h| {
                     if !bigger.contains(h) {
                         next.insert(h);
+                        bigger.insert(h);
                     }
                 });
             }
         }
-        next.iter().for_each(|b| {
-            bigger.insert(b);
-        });
-        bags = next;
+        // now visit the discovered bigger bags
+        bags_visitor = next;
     }
     bigger.len()
 }
