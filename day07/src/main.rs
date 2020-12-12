@@ -55,35 +55,34 @@ fn parse_input(input: &str) -> Input {
 }
 
 fn solve_part_1(input: &Input) -> Output1 {
-    let bag_holders = input.iter().fold(
-        HashMap::<String, HashSet<String>>::new(),
-        |mut map, rule| {
+    let bag_holders = input
+        .iter()
+        .fold(HashMap::<&str, HashSet<&str>>::new(), |mut map, rule| {
             rule.constraints.iter().map(|c| &c.bag).for_each(|bag| {
-                map.entry(bag.clone())
+                map.entry(bag)
                     .and_modify(|bigger| {
-                        bigger.insert(rule.container.clone());
+                        bigger.insert(&rule.container);
                     })
-                    .or_insert_with(|| [rule.container.clone()].iter().cloned().collect());
+                    .or_insert_with(|| [rule.container.as_str()].iter().cloned().collect());
             });
             map
-        },
-    );
-    let mut bigger: HashSet<String> = HashSet::new();
-    let mut bags: HashSet<String> = HashSet::new();
-    bags.insert(String::from("shiny gold"));
+        });
+    let mut bigger: HashSet<&str> = HashSet::new();
+    let mut bags: HashSet<&str> = HashSet::new();
+    bags.insert("shiny gold");
     while !bags.is_empty() {
-        let mut next: HashSet<String> = HashSet::new();
+        let mut next: HashSet<&str> = HashSet::new();
         for b in bags.iter() {
             if let Some(holders) = bag_holders.get(b) {
                 holders.iter().for_each(|h| {
                     if !bigger.contains(h) {
-                        next.insert(h.clone());
+                        next.insert(h);
                     }
                 });
             }
         }
         next.iter().for_each(|b| {
-            bigger.insert(b.clone());
+            bigger.insert(b);
         });
         bags = next;
     }
