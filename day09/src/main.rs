@@ -1,4 +1,7 @@
-use std::{env, fs};
+use std::{
+    collections::{HashSet, VecDeque},
+    env, fs,
+};
 
 fn get_input_path() -> String {
     let args: Vec<String> = env::args().collect();
@@ -17,25 +20,36 @@ fn parse_input(input: &str) -> Input {
         .collect()
 }
 
-fn xmas_check(leading: &[Number], next: Number) -> bool {
-    let mut first = leading.iter();
-    while let Some(a) = first.next() {
-        for b in first.clone() {
-            if a != b && a + b == next {
-                return true;
+fn xmas_find_weakness_target(input: &Input, preamble_len: usize) -> Output1 {
+    let mut cache: VecDeque<HashSet<Number>> = VecDeque::with_capacity(preamble_len);
+    for a in input.iter().take(preamble_len) {
+        let mut sums: HashSet<Number> = HashSet::with_capacity(preamble_len - 1);
+        for b in input.iter().take(preamble_len) {
+            if a != b {
+                sums.insert(a + b);
             }
         }
+        cache.push_back(sums);
     }
-    false
-}
-
-fn xmas_find_weakness_target(input: &Input, preamble_len: usize) -> Output1 {
-    *input
-        .windows(preamble_len + 1)
-        .map(|w| w.split_last().unwrap())
-        .find(|(&last, heading)| !xmas_check(heading, last))
-        .unwrap()
-        .0
+    for window in input.windows(preamble_len + 1) {
+        let (to_check, leading) = window.split_last().unwrap();
+        if cache.iter().find(|sums| sums.contains(to_check)).is_none() {
+            return *to_check;
+        }
+        // prepare next iteration by:
+        //  - removing sums of first value (out of scope at next iteration)
+        //  - adding sums of incoming check value (in scope at next iteration)
+        cache.pop_front();
+        let (_, kept) = leading.split_first().unwrap();
+        let mut next_sums: HashSet<Number> = HashSet::with_capacity(preamble_len - 1);
+        for n in kept {
+            if n != to_check {
+                next_sums.insert(n + to_check);
+            }
+        }
+        cache.push_back(next_sums);
+    }
+    panic!("Failed to find weakness target");
 }
 
 fn solve_part_1(input: &Input) -> Output1 {
