@@ -1,18 +1,18 @@
-use std::{collections::HashSet, env, fs};
+use std::{env, fs};
 
 fn get_input_path() -> String {
     let args: Vec<String> = env::args().collect();
     args.get(1).unwrap().clone()
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Operation {
     Noop,
     Acc,
     Jump,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Instruction {
     pub op: Operation,
     pub arg: i32,
@@ -43,50 +43,56 @@ fn parse_input(input: &str) -> Input {
 
 struct Machine<'a> {
     prog: &'a Program,
+    pub state: MachineState,
+}
+
+#[derive(Clone, Copy)]
+struct MachineState {
     pub acc: i32,
     pub iptr: usize,
 }
 
 #[derive(PartialEq)]
-enum MachineState {
+enum ProgramState {
     Running,
     Terminated,
 }
 
 impl<'a> Machine<'a> {
     pub fn new(prog: &Program) -> Machine {
-        Machine {
-            prog,
-            acc: 0,
-            iptr: 0,
-        }
+        let state = MachineState { iptr: 0, acc: 0 };
+        Self::with_state(prog, state)
     }
 
-    pub fn step(&mut self) -> MachineState {
-        let inst = match self.prog.get(self.iptr) {
+    pub fn with_state(prog: &Program, state: MachineState) -> Machine {
+        Machine { prog, state }
+    }
+
+    pub fn step(&mut self) -> ProgramState {
+        let inst = match self.prog.get(self.state.iptr) {
             Some(i) => i,
-            None => return MachineState::Terminated,
+            None => return ProgramState::Terminated,
         };
         match inst.op {
-            Operation::Noop => self.iptr += 1,
-            Operation::Jump => self.iptr = (self.iptr as i32 + inst.arg) as usize,
+            Operation::Noop => self.state.iptr += 1,
+            Operation::Jump => self.state.iptr = (self.state.iptr as i32 + inst.arg) as usize,
             Operation::Acc => {
-                self.acc += inst.arg;
-                self.iptr += 1;
+                self.state.acc += inst.arg;
+                self.state.iptr += 1;
             }
         }
-        MachineState::Running
+        self.program_state()
     }
 
-    pub fn state(&self) -> MachineState {
-        match self.prog.get(self.iptr) {
-            Some(_) => MachineState::Running,
-            None => MachineState::Terminated,
+    pub fn program_state(&self) -> ProgramState {
+        match self.prog.get(self.state.iptr) {
+            Some(_) => ProgramState::Running,
+            None => ProgramState::Terminated,
         }
     }
 
     pub fn next_op(&self) -> Operation {
-        self.prog.get(self.iptr).unwrap().op
+        self.prog.get(self.state.iptr).unwrap().op
     }
 }
 
@@ -96,27 +102,21 @@ fn solve_part_1(input: &Input) -> Output1 {
         executed.push(false);
     }
     let mut m: Machine = Machine::new(input);
-    while !executed[m.iptr] {
-        executed[m.iptr] = true;
+    while !executed[m.state.iptr] {
+        executed[m.state.iptr] = true;
         m.step();
     }
-    m.acc
+    m.state.acc
 }
 
-fn run_best_effort(m: &mut Machine, exec_cache: &mut [bool]) -> HashSet<usize> {
-    exec_cache.iter_mut().for_each(|x| *x = false);
-    let mut flow_ctrl_visited: HashSet<usize> = HashSet::new();
-    while m.state() == MachineState::Running && !exec_cache[m.iptr] {
-        exec_cache[m.iptr] = true;
-        match m.next_op() {
-            Operation::Jump | Operation::Noop => {
-                flow_ctrl_visited.insert(m.iptr);
-            }
-            _ => {}
+fn program_loops(m: &mut Machine, exec_cache: &mut [bool]) -> bool {
+    while !exec_cache[m.state.iptr] {
+        exec_cache[m.state.iptr] = true;
+        if let ProgramState::Terminated = m.step() {
+            return false;
         }
-        m.step();
     }
-    flow_ctrl_visited
+    true
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
@@ -124,29 +124,30 @@ fn solve_part_2(input: &Input) -> Output2 {
     for _ in 0..input.len() {
         executed.push(false);
     }
-    let flow_ctrls = run_best_effort(&mut Machine::new(input), &mut executed);
-    for to_mod in flow_ctrls {
-        let mut modded = input.clone();
-        let patch = modded.get_mut(to_mod).unwrap();
-        match patch {
-            Instruction {
-                op: Operation::Noop,
-                ..
-            } => patch.op = Operation::Jump,
-            Instruction {
-                op: Operation::Jump,
-                ..
-            } => patch.op = Operation::Noop,
-            _ => panic!("Acc instruction shall not be patched"),
-        };
-        let mut m: Machine = Machine::new(&modded);
-        let flow_ctrl_execed = run_best_effort(&mut m, &mut executed);
-        match m.state() {
-            MachineState::Terminated => return m.acc,
-            MachineState::Running => continue,
+    let mut mach = Machine::new(&input);
+    let mut modded = input.clone();
+    loop {
+        // step until next branching
+        while mach.next_op() != Operation::Jump && mach.next_op() != Operation::Noop {
+            mach.step();
+        }
+        // patch code before continuing
+        let op: &mut Operation = &mut modded[mach.state.iptr].op;
+        match op {
+            Operation::Jump => *op = Operation::Noop,
+            Operation::Noop => *op = Operation::Jump,
+            _ => panic!("Unexpected instruction to patch"),
+        }
+        // create alternative machine with patched code
+        let mut alternative = Machine::with_state(&modded, mach.state);
+        if program_loops(&mut alternative, &mut executed) {
+            executed.iter_mut().for_each(|e| *e = false);
+            // step real machine on original flow control instruction
+            mach.step();
+        } else {
+            return alternative.state.acc;
         }
     }
-    panic!("Didn't find a proper instruction to patch");
 }
 
 fn main() {
