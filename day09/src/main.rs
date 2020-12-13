@@ -8,7 +8,7 @@ fn get_input_path() -> String {
 type Number = u64;
 type Input = Vec<Number>;
 type Output1 = Number;
-type Output2 = ();
+type Output2 = Number;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -29,7 +29,7 @@ fn xmas_check(leading: &[Number], next: Number) -> bool {
     false
 }
 
-fn xmas_find_weakness(input: &Input, preamble_len: usize) -> Output1 {
+fn xmas_find_weakness_target(input: &Input, preamble_len: usize) -> Output1 {
     *input
         .windows(preamble_len + 1)
         .map(|w| w.split_last().unwrap())
@@ -39,11 +39,29 @@ fn xmas_find_weakness(input: &Input, preamble_len: usize) -> Output1 {
 }
 
 fn solve_part_1(input: &Input) -> Output1 {
-    xmas_find_weakness(input, 25)
+    xmas_find_weakness_target(input, 25)
+}
+
+fn xmas_find_weakness(input: &Input, target: Number) -> Number {
+    let mut start = input.iter();
+    while !start.as_slice().is_empty() {
+        for end_idx in 0..start.as_slice().len() {
+            let chunk = &start.as_slice()[..=end_idx];
+            let sum = chunk.iter().sum::<u64>();
+            if sum > target {
+                break;
+            } else if sum == target {
+                return chunk.iter().min().unwrap() + chunk.iter().max().unwrap();
+            }
+        }
+        start.next();
+    }
+    panic!("Didn't find contiguous numbers summing up to target");
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let target = xmas_find_weakness_target(input, 25);
+    xmas_find_weakness(input, target)
 }
 
 fn main() {
@@ -84,7 +102,14 @@ mod tests {
     #[test]
     fn text_part1_example() {
         let input = parse_input(EX_INPUT);
-        let res = xmas_find_weakness(&input, 5);
+        let res = xmas_find_weakness_target(&input, 5);
         assert_eq!(127, res);
+    }
+
+    #[test]
+    fn text_part2_example() {
+        let input = parse_input(EX_INPUT);
+        let res = xmas_find_weakness(&input, 127);
+        assert_eq!(62, res);
     }
 }
