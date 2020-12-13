@@ -57,20 +57,20 @@ fn solve_part_1(input: &Input) -> Output1 {
 }
 
 fn xmas_find_weakness(input: &Input, target: Number) -> Number {
-    let mut start = input.iter();
-    while !start.as_slice().is_empty() {
-        for end_idx in 0..start.as_slice().len() {
-            let chunk = &start.as_slice()[..=end_idx];
-            let sum = chunk.iter().sum::<u64>();
-            if sum > target {
-                break;
-            } else if sum == target {
-                return chunk.iter().min().unwrap() + chunk.iter().max().unwrap();
-            }
+    let mut start: usize = 0;
+    let mut end: usize = 0;
+    let mut sum = input[0];
+    while sum != target {
+        if sum < target {
+            end += 1;
+            sum += input[end];
+        } else {
+            sum -= input[start];
+            start += 1;
         }
-        start.next();
     }
-    panic!("Didn't find contiguous numbers summing up to target");
+    let target_sum = &input[start..=end];
+    return target_sum.iter().min().unwrap() + target_sum.iter().max().unwrap();
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
