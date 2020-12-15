@@ -8,7 +8,7 @@ fn get_input_path() -> String {
 type Jolt = u32;
 type Input = Vec<Jolt>;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     input.lines().map(|l| l.parse::<Jolt>().unwrap()).collect()
@@ -36,7 +36,28 @@ fn solve_part_1(input: &Input) -> Output1 {
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let mut sorted = vec![0];
+    sorted.extend(input);
+    sorted.sort();
+    let mut pathes: Vec<usize> = Vec::with_capacity(sorted.len());
+    pathes.push(1);
+    for _ in 1..sorted.len() {
+        pathes.push(0);
+    }
+    // build pathes vector, it contains count of each arriving pathes
+    // the first path gets a weight of 1 and it applies it to its children
+    // each parent increases its children weight by its own (the number of path arriving to it)
+    for (idx, jolt) in sorted.iter().enumerate() {
+        for (shift, _) in sorted[idx + 1..]
+            .iter()
+            .take_while(|&item| *item <= *jolt + 3)
+            .enumerate()
+        {
+            pathes[idx + shift + 1] += pathes[idx];
+        }
+    }
+    // the last item will contain the cumulated weight (possible paths) leading to it
+    *pathes.last().unwrap()
 }
 
 fn main() {
@@ -104,8 +125,22 @@ mod tests {
 
     #[test]
     fn test_ex2_part1() {
-        let input = parse_input(EX1_INPUT);
+        let input = parse_input(EX2_INPUT);
         let res = solve_part_1(&input);
         assert_eq!(22 * 10, res);
+    }
+
+    #[test]
+    fn test_ex1_part2() {
+        let input = parse_input(EX1_INPUT);
+        let res = solve_part_2(&input);
+        assert_eq!(8, res);
+    }
+
+    #[test]
+    fn test_ex2_part2() {
+        let input = parse_input(EX2_INPUT);
+        let res = solve_part_2(&input);
+        assert_eq!(19208, res);
     }
 }
