@@ -85,6 +85,16 @@ impl Grid {
             grid: self,
         }
     }
+
+    pub fn toward<'s>(&'s self, x: usize, y: usize, dir: (i8, i8)) -> Toward<'s> {
+        Toward {
+            grid: self,
+            x,
+            y,
+            dir,
+            off: 1,
+        }
+    }
 }
 impl Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -139,9 +149,29 @@ impl<'n> Iterator for Neighbours<'n> {
         cell
     }
 }
+struct Toward<'n> {
+    grid: &'n Grid,
+    x: usize,
+    y: usize,
+    dir: (i8, i8),
+    off: usize,
+}
+impl<'n> Iterator for Toward<'n> {
+    type Item = Cell;
+    fn next(&mut self) -> Option<Self::Item> {
+        let x = self.x as i64 + self.off as i64 * self.dir.0 as i64;
+        let y = self.y as i64 + self.off as i64 * self.dir.1 as i64;
+        if x < 0 || x >= self.grid.width as i64 || y < 0 || y >= self.grid.height as i64 {
+            return None;
+        }
+        let cell = self.grid.cell(x as usize, y as usize);
+        self.off += 1;
+        cell.copied()
+    }
+}
 type Input = Grid;
 type Output1 = usize;
-type Output2 = ();
+type Output2 = usize;
 
 fn parse_input(input: &str) -> Input {
     let mut grid = Grid::new();
@@ -200,8 +230,66 @@ fn solve_part_1(input: &Input) -> Output1 {
         .count()
 }
 
-fn solve_part_2(_input: &Input) -> Output2 {
-    unimplemented!()
+fn simul_round_2(grid: &mut Grid, mirror: &mut Grid) -> bool {
+    let mut change = false;
+    for (idx, cell) in grid.cells.iter().enumerate() {
+        if let Cell::Floor = cell {
+            continue;
+        }
+        const DIRECTIONS: [(i8, i8); 8] = [
+            (-1, 0),
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+            (0, 1),
+            (-1, 1),
+        ];
+        let in_sight = DIRECTIONS
+            .iter()
+            .map(|dir| {
+                grid.toward(idx % grid.width, idx / grid.width, *dir)
+                    .find(|&c| c != Cell::Floor)
+            })
+            .filter(|&c| c == Some(Cell::Seat(Occupation::Occupied)))
+            .count();
+        let cell = match cell {
+            Cell::Seat(Occupation::Empty) => {
+                if in_sight == 0 {
+                    change = true;
+                    Cell::Seat(Occupation::Occupied)
+                } else {
+                    *cell
+                }
+            }
+            Cell::Seat(Occupation::Occupied) => {
+                if in_sight >= 5 {
+                    change = true;
+                    Cell::Seat(Occupation::Empty)
+                } else {
+                    *cell
+                }
+            }
+            _ => *cell,
+        };
+        *mirror.cell_idx_mut(idx).unwrap() = cell;
+    }
+    grid.cells.swap_with_slice(mirror.cells.as_mut_slice());
+    change
+}
+
+fn solve_part_2(input: &Input) -> Output2 {
+    let mut grid = input.clone();
+    let mut mirror = input.clone();
+    let mut change = true;
+    while change {
+        change = simul_round_2(&mut grid, &mut mirror);
+    }
+    grid.cells
+        .iter()
+        .filter(|&c| *c == Cell::Seat(Occupation::Occupied))
+        .count()
 }
 
 fn main() {
@@ -247,5 +335,21 @@ L.LLLLL.LL";
         let input = parse_input(EXAMPLE);
         let res = solve_part_1(&input);
         assert_eq!(37, res);
+    }
+    #[test]
+    fn test_simul2() {
+        let mut grid = parse_input(EXAMPLE);
+        let mut mirror = grid.clone();
+        println!("0. {}\n", grid);
+        simul_round_2(&mut grid, &mut mirror);
+        println!("1. {}\n", grid);
+        simul_round_2(&mut grid, &mut mirror);
+        println!("2. {}\n", grid);
+    }
+    #[test]
+    fn test_part2() {
+        let input = parse_input(EXAMPLE);
+        let res = solve_part_2(&input);
+        assert_eq!(26, res);
     }
 }
