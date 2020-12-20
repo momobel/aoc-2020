@@ -50,32 +50,42 @@ impl FromStr for Instruction {
 
 type Input = Vec<Instruction>;
 type Output1 = u32;
-type Output2 = ();
+type Output2 = u32;
+
+#[derive(Debug, Clone, Copy)]
+struct Position {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Position {
+    pub fn move_toward_dir(&mut self, dist: u32, dir: Orientation) {
+        let dist = dist as i32;
+        match dir {
+            Orientation::North => self.y += dist,
+            Orientation::South => self.y -= dist,
+            Orientation::East => self.x += dist,
+            Orientation::West => self.x -= dist,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 struct Ship {
     pub orientation: Orientation,
-    pub x: i32,
-    pub y: i32,
+    pub position: Position,
 }
 
 impl Ship {
     pub fn new() -> Ship {
         Ship {
             orientation: Orientation::East,
-            x: 0,
-            y: 0,
+            position: Position { x: 0, y: 0 },
         }
     }
 
-    pub fn move_toward(&mut self, dist: u32, dir: Orientation) {
-        let dist = dist as i32;
-        match dir {
-            Orientation::North => self.y += dist as i32,
-            Orientation::South => self.y -= dist as i32,
-            Orientation::East => self.x += dist as i32,
-            Orientation::West => self.x -= dist as i32,
-        }
+    pub fn move_toward_dir(&mut self, dist: u32, dir: Orientation) {
+        self.position.move_toward_dir(dist, dir);
     }
 
     pub fn turn(&mut self, angle: u32, side: Side) {
@@ -114,16 +124,66 @@ fn solve_part_1(input: &Input) -> Output1 {
     let mut ship = Ship::new();
     for inst in input.iter() {
         match inst.action {
-            Action::Forward => ship.move_toward(inst.value, ship.orientation),
-            Action::Move(orient) => ship.move_toward(inst.value, orient),
+            Action::Forward => ship.move_toward_dir(inst.value, ship.orientation),
+            Action::Move(orient) => ship.move_toward_dir(inst.value, orient),
             Action::Turn(side) => ship.turn(inst.value, side),
         }
     }
-    ship.x.abs() as u32 + ship.y.abs() as u32
+    ship.position.x.abs() as u32 + ship.position.y.abs() as u32
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Waypoint {
+    pub position: Position,
+}
+
+impl Waypoint {
+    pub fn new() -> Self {
+        Waypoint {
+            position: Position { x: 10, y: 1 },
+        }
+    }
+
+    pub fn move_toward_dir(&mut self, dist: u32, orientation: Orientation) {
+        self.position.move_toward_dir(dist, orientation);
+    }
+
+    pub fn rotate(&mut self, angle: u32, side: Side) {
+        let angle = (angle % 360) as i32;
+        let angle = match side {
+            Side::Left => angle,
+            Side::Right => 360 - angle,
+        };
+        let (cos, sin) = if angle == 90 {
+            (0, 1)
+        } else if angle == 180 {
+            (-1, 0)
+        } else if angle == 270 {
+            (0, -1)
+        } else {
+            panic!("Unknown angle");
+        };
+        let x = self.position.x * cos - self.position.y * sin;
+        let y = self.position.x * sin + self.position.y * cos;
+        self.position.x = x;
+        self.position.y = y;
+    }
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let mut ship = Ship::new();
+    let mut wayp = Waypoint::new();
+    for inst in input.iter() {
+        match inst.action {
+            Action::Move(orient) => wayp.move_toward_dir(inst.value, orient),
+            Action::Forward => {
+                ship.position.x += inst.value as i32 * wayp.position.x;
+                ship.position.y += inst.value as i32 * wayp.position.y;
+            }
+            Action::Turn(side) => wayp.rotate(inst.value, side),
+        }
+    }
+    ship.position.x.abs() as u32 + ship.position.y.abs() as u32
 }
 
 fn main() {
@@ -136,17 +196,24 @@ fn main() {
     println!("Part 2: {:?}", part_2_result);
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
-    #[test]
-    fn test_ex_part1() {
-        let input = "F10
+    use super::*;
+    const EX_INPUT: &str = "F10
 N3
 F7
 R90
 F11";
-        let input = parse_input(input);
+    #[test]
+    fn test_ex_part1() {
+        let input = parse_input(EX_INPUT);
         let res = solve_part_1(&input);
         assert_eq!(25, res);
+    }
+    #[test]
+    fn test_ex_part2() {
+        let input = parse_input(EX_INPUT);
+        let res = solve_part_2(&input);
+        assert_eq!(286, res);
     }
 }
