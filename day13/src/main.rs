@@ -5,10 +5,16 @@ fn get_input_path() -> String {
     args.get(1).unwrap().clone()
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Bus {
+    pub id: u64,
+    pub list_off: u64,
+}
+
 #[derive(Debug, Clone)]
 struct RouteInfo {
-    ready_at: u64,
-    buses: Vec<u64>,
+    pub ready_at: u64,
+    pub buses: Vec<Bus>,
 }
 
 type Input = RouteInfo;
@@ -23,8 +29,12 @@ fn parse_input(input: &str) -> Input {
         .copied()
         .unwrap()
         .split(',')
-        .filter(|&tok| tok != "x")
-        .map(|tok| tok.parse::<u64>().unwrap())
+        .enumerate()
+        .filter(|(_, tok)| *tok != "x")
+        .map(|(idx, tok)| Bus {
+            id: tok.parse::<u64>().unwrap(),
+            list_off: idx as u64,
+        })
         .collect();
     RouteInfo { ready_at, buses }
 }
@@ -32,18 +42,18 @@ fn parse_input(input: &str) -> Input {
 fn solve_part_1(input: &Input) -> Output1 {
     let mut bus_to_take: u64 = 0;
     let mut earliest_departure: u64 = u64::MAX;
-    for b in input.buses.iter().copied() {
-        let rem = input.ready_at % b;
-        let div = input.ready_at / b;
+    for b in input.buses.iter() {
+        let rem = input.ready_at % b.id;
+        let div = input.ready_at / b.id;
         if rem == 0 {
-            bus_to_take = b;
+            bus_to_take = b.id;
             earliest_departure = input.ready_at;
             break;
         } else {
-            let first = (div + 1) * b;
+            let first = (div + 1) * b.id;
             if first < earliest_departure {
                 earliest_departure = first;
-                bus_to_take = b;
+                bus_to_take = b.id;
             }
         }
     }
