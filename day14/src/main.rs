@@ -13,15 +13,17 @@ struct WriteMemArgs {
 
 #[derive(Debug, Clone, Copy)]
 struct Mask {
-    pub and: u64,
-    pub or: u64,
+    pub ones: u64,
+    pub zeroes: u64,
+    pub xes: u64,
 }
 
 impl Mask {
     pub fn new() -> Self {
         Self {
-            or: 0,
-            and: u64::MAX,
+            ones: 0,
+            zeroes: 0,
+            xes: 0,
         }
     }
 }
@@ -42,9 +44,11 @@ impl FromStr for Mask {
             .fold(Mask::new(), |mut mask, (idx, c)| {
                 let bit = 35 - idx;
                 if c == '1' {
-                    mask.or |= 1 << bit;
+                    mask.ones |= 1 << bit;
                 } else if c == '0' {
-                    mask.and &= !(1 << bit);
+                    mask.zeroes |= 1 << bit;
+                } else if c == 'X' {
+                    mask.xes |= 1 << bit;
                 }
                 mask
             });
@@ -97,7 +101,7 @@ fn solve_part_1(input: &Input) -> Output1 {
         match inst {
             Instruction::UpdateMask(m) => mask = *m,
             Instruction::WriteMem(wr_args) => {
-                let masked = (wr_args.value | mask.or) & mask.and;
+                let masked = (wr_args.value | mask.ones) & !mask.zeroes;
                 memory.insert(wr_args.address, masked);
             }
         }
