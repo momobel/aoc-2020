@@ -5,6 +5,8 @@ fn get_input_path() -> String {
     args.get(1).unwrap().clone()
 }
 
+const WORD_LEN: usize = 36;
+
 #[derive(Debug, Clone, Copy)]
 struct WriteMemArgs {
     pub address: u64,
@@ -42,7 +44,7 @@ impl FromStr for Mask {
             .chars()
             .enumerate()
             .fold(Mask::new(), |mut mask, (idx, c)| {
-                let bit = 35 - idx;
+                let bit = WORD_LEN - 1 - idx;
                 if c == '1' {
                     mask.ones |= 1 << bit;
                 } else if c == '0' {
@@ -85,7 +87,7 @@ impl FromStr for Instruction {
 type Program = Vec<Instruction>;
 type Input = Program;
 type Output1 = u64;
-type Output2 = ();
+type Output2 = u64;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -110,7 +112,71 @@ fn solve_part_1(input: &Input) -> Output1 {
 }
 
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    let mut mask = Mask {
+        zeroes: u64::MAX,
+        ones: 0,
+        xes: 0,
+    };
+    let mut memory: HashMap<u64, u64> = HashMap::new();
+    for inst in input.iter() {
+        match inst {
+            Instruction::UpdateMask(m) => mask = *m,
+            Instruction::WriteMem(args) => {
+                let changed_addr = args.address | mask.ones;
+                for addr in FloatingAddrIter::new(changed_addr, mask.xes) {
+                    memory.insert(addr, args.value);
+                }
+            }
+        }
+    }
+    memory.iter().map(|(_, val)| val).sum()
+}
+
+#[derive(Debug, Clone, Copy)]
+struct FloatingAddrIter {
+    addr: u64,
+    floating: u64,
+    set_float_bits: u8,
+    counter: u64,
+}
+
+impl FloatingAddrIter {
+    pub fn new(addr: u64, floating: u64) -> FloatingAddrIter {
+        let set_float_bits: u8 = (0..WORD_LEN)
+            .map(|i| if (floating & (1 << i)) != 0 { 1 } else { 0 })
+            .sum();
+        FloatingAddrIter {
+            addr,
+            floating,
+            set_float_bits,
+            counter: 0,
+        }
+    }
+}
+
+impl Iterator for FloatingAddrIter {
+    type Item = u64;
+    fn next(&mut self) -> Option<Self::Item> {
+        let max_counter = 1 << self.set_float_bits;
+        if self.counter >= max_counter {
+            return None;
+        }
+        let mut addr = self.addr;
+
+        for (idx, bit) in (0..WORD_LEN)
+            .filter(|b| self.floating & (1 << b) != 0)
+            .enumerate()
+        {
+            let counter_bit = self.counter & (1 << idx);
+            if counter_bit == 0 {
+                addr &= !(1 << bit); // set bit to 0
+            } else {
+                addr |= 1 << bit; // set bit to 1
+            }
+        }
+        self.counter += 1;
+        Some(addr)
+    }
 }
 
 #[cfg(test)]
@@ -126,6 +192,26 @@ mod tests {
         println!("{:?}", input);
         let res = solve_part_1(&input);
         assert_eq!(165, res);
+    }
+    #[test]
+    fn part_2_iter() {
+        let mut iter = FloatingAddrIter::new(0x1a, 0x21);
+        assert_eq!(Some(26), iter.next());
+        assert_eq!(Some(27), iter.next());
+        assert_eq!(Some(58), iter.next());
+        assert_eq!(Some(59), iter.next());
+        assert_eq!(None, iter.next());
+    }
+    #[test]
+    fn part_2_ex() {
+        let input = "mask = 000000000000000000000000000000X1001X\n\
+        mem[42] = 100\n\
+        mask = 00000000000000000000000000000000X0XX\n\
+        mem[26] = 1";
+        let input = parse_input(input);
+        println!("{:?}", input);
+        let res = solve_part_2(&input);
+        assert_eq!(208, res);
     }
 }
 
