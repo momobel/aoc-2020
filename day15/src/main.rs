@@ -7,8 +7,8 @@ fn get_input_path() -> String {
 
 type Number = u32;
 type Input = Vec<Number>;
-type Output1 = u32;
-type Output2 = ();
+type Output1 = Number;
+type Output2 = Number;
 
 fn parse_input(input: &str) -> Input {
     input
@@ -17,13 +17,13 @@ fn parse_input(input: &str) -> Input {
         .collect()
 }
 
-fn solve_part_1(input: &Input) -> Output1 {
+fn get_nth_number(input: &Input, n: usize) -> Number {
     let mut game: HashMap<Number, usize> = HashMap::new();
     for (idx, &num) in input.iter().enumerate() {
         game.entry(num).or_insert(idx);
     }
     let mut next = 0;
-    for i in game.len()..(2020 - 1) {
+    for i in game.len()..(n - 1) {
         match game.get(&next) {
             Some(&last_seen) => {
                 game.insert(next, i);
@@ -38,8 +38,12 @@ fn solve_part_1(input: &Input) -> Output1 {
     next
 }
 
+fn solve_part_1(input: &Input) -> Output1 {
+    get_nth_number(input, 2020)
+}
+
 fn solve_part_2(input: &Input) -> Output2 {
-    unimplemented!()
+    get_nth_number(input, 30000000)
 }
 
 fn main() {
